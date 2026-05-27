@@ -1,0 +1,22 @@
+{
+  "current_quality_score": 98.6,
+  "predicted_next_score": 98.6,
+  "trend_direction": "insufficient_data",
+  "trend_slope": 0,
+  "quality_forecast": [],
+  "anomaly_alerts": [],
+  "table_relationships": [
+    {
+      "source": "ods_products",
+      "target": "ods_sales",
+      "relationship": "lookup",
+      "shared_columns": 1,
+      "join_cardinality": "3187 rows"
+    }
+  ],
+  "data_freshness_minutes": 1,
+  "pipeline_health": "degraded",
+  "recommendations": [
+    "数据质量整体良好，继续保持当前监控策略"
+  ]
+}

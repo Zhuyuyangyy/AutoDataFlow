@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AutoDataFlow 数据健康度看板</title>
+  <script src="https://unpkg.com/vue@3.4.0/dist/vue.global.prod.js"></script>
+  <script src="https://unpkg.com/echarts@5.4.3/dist/echarts.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #060d1a;
+      --panel: rgba(6,13,26,0.95);
+      --border: rgba(0,150,200,0.15);
+      --accent: #00c8ff;
+      --green: #00e676;
+      --yellow: #ffca28;
+      --red: #ff5252;
+      --text: #e0e8f0;
+      --dim: #5a7080;
+    }
+
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; min-height: 100vh; overflow-x: hidden; }
+
+    /* Header */
+    #app-header {
+      position: sticky; top: 0; z-index: 100;
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      backdrop-filter: blur(12px);
+    }
+
+    #app-header h1 { font-size: 17px; color: var(--accent); }
+    #app-header h1 span { color: var(--dim); font-size: 12px; font-weight: 400; }
+
+    .header-stats {
+      display: flex;
+      gap: 24px;
+      margin-left: auto;
+    }
+
+    .header-stat { text-align: center; }
+    .header-stat .val { font-size: 20px; font-weight: 800; color: var(--accent); }
+    .header-stat .lbl { font-size: 10px; color: var(--dim); text-transform: uppercase; }
+
+    .badge {
+      padding: 3px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .badge-ok { background: rgba(0,230,118,0.15); color: var(--green); border: 1px solid rgba(0,230,118,0.3); }
+    .badge-warn { background: rgba(255,202,40,0.15); color: var(--yellow); border: 1px solid rgba(255,202,40,0.3); }
+    .badge-bad { background: rgba(255,82,82,0.15); color: var(--red); border: 1px solid rgba(255,82,82,0.3); }
+
+    /* Main grid */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      padding: 16px 20px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px 20px;
+      backdrop-filter: blur(8px);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .card-title { font-size: 13px; font-weight: 700; color: var(--text); }
+    .card-subtitle { font-size: 11px; color: var(--dim); }
+
+    .chart { width: 100%; height: 220px; }
+
+    /* Quality gauge card */
+    .quality-gauge-card {
+      grid-column: 1;
+      grid-row: 1;
+    }
+
+    /* Table quality bar */
+    .table-quality-card {
+      grid-column: 2;
+      grid-row: 1;
+    }
+
+    /* Trend + Null rate */
+    .bottom-grid {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px;
+    }
+
+    /* Status rows */
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      font-size: 13px;
+    }
+
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .dot-ok { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .dot-warn { background: var(--yellow); box-shadow: 0 0 6px var(--yellow); }
+    .dot-bad { background: var(--red); box-shadow: 0 0 6px var(--red); }
+
+    /* Progress bar */
+    .quality-bar-wrap { margin-top: 6px; }
+    .quality-bar-bg { height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
+    .quality-bar-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
+    .bar-high { background: linear-gradient(90deg, #00c8ff, #00e676); }
+    .bar-mid { background: linear-gradient(90deg, #ffca28, #ff9800); }
+    .bar-low { background: linear-gradient(90deg, #ff5252, #d50000); }
+
+
+    /* Agent Activity Heatmap */
+    .agent-heatmap {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 3px;
+      margin-top: 8px;
+    }
+    .heat-cell {
+      aspect-ratio: 1;
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      font-weight: 700;
+      color: transparent;
+    }
+    .heat-0 { background: rgba(0,200,255,0.05); }
+    .heat-1 { background: rgba(0,200,255,0.2); }
+    .heat-2 { background: rgba(0,200,255,0.4); }
+    .heat-3 { background: rgba(0,200,255,0.65); }
+    .heat-4 { background: rgba(0,200,255,0.9); color: #000; }
+    .heat-label {
+      font-size: 9px;
+      color: #5a7080;
+      text-align: center;
+      margin-top: 2px;
+    }
+
+    /* Anomaly Alert */
+    .anomaly-alert {
+      background: rgba(255,82,82,0.08);
+      border: 1px solid rgba(255,82,82,0.25);
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin: 6px 0;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .anomaly-alert.warn {
+      background: rgba(255,202,40,0.08);
+      border-color: rgba(255,202,40,0.25);
+    }
+    .anomaly-icon { font-size: 16px; flex-shrink: 0; }
+    .anomaly-text { font-size: 12px; color: #e0e8f0; line-height: 1.5; }
+    .anomaly-text strong { color: #ff5252; }
+    .anomaly-text.warn strong { color: #ffca28; }
+
+    /* Schema Timeline */
+    .schema-timeline {
+      position: relative;
+      padding-left: 16px;
+      margin-top: 8px;
+    }
+    .schema-timeline::before {
+      content: '';
+      position: absolute;
+      left: 5px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: rgba(0,200,255,0.2);
+    }
+    .schema-event {
+      position: relative;
+      padding: 4px 0 8px 12px;
+      font-size: 11px;
+    }
+    .schema-event::before {
+      content: '';
+      position: absolute;
+      left: -14px;
+      top: 8px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      border: 2px solid #00c8ff;
+      background: #060d1a;
+    }
+    .schema-event.add::before { border-color: #00e676; background: #00e676; }
+    .schema-event.mod::before { border-color: #ffca28; background: #ffca28; }
+    .schema-event.del::before { border-color: #ff5252; background: #ff5252; }
+    .schema-time { color: #5a7080; font-size: 10px; }
+    .schema-type { font-weight: 600; }
+    .schema-event.add .schema-type { color: #00e676; }
+    .schema-event.mod .schema-type { color: #ffca28; }
+    .schema-event.del .schema-type { color: #ff5252; }
+
+    /* Lineage Flow */
+    .lineage-flow {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 0;
+      overflow-x: auto;
+    }
+    .lineage-node {
+      flex-shrink: 0;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 600;
+      text-align: center;
+    }
+    .ln-src { background: rgba(0,200,255,0.15); color: #00c8ff; border: 1px solid rgba(0,200,255,0.3); }
+    .ln-proc { background: rgba(255,202,40,0.15); color: #ffca28; border: 1px solid rgba(255,202,40,0.3); }
+    .ln-out { background: rgba(0,230,118,0.15); color: #00e676; border: 1px solid rgba(0,230,118,0.3); }
+    .lineage-arrow { color: #5a7080; font-size: 14px; flex-shrink: 0; }
+
+    /* Predictive bars */
+    .pred-bar-wrap { margin-top: 4px; }
+    .sources-grid { display: flex; flex-direction: column; gap: 8px; }
+    .source-card { background: rgba(0,150,200,0.08); border: 1px solid rgba(0,150,200,0.15); border-radius: 8px; padding: 10px 12px; }
+    .source-card.source-warn { background: rgba(255,202,40,0.08); border-color: rgba(255,202,40,0.2); }
+    .source-header { font-size: 13px; margin-bottom: 6px; }
+    .source-detail { font-size: 11px; color: var(--dim); margin-bottom: 2px; }
+    .source-warn-msg { font-size: 11px; color: var(--yellow); margin-top: 4px; }
+    .pred-bar-header { display: flex; justify-content: space-between; font-size: 11px; color: #5a7080; margin-bottom: 3px; }
+    .pred-bar { height: 5px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
+    .pred-bar-fill { height: 100%; border-radius: 3px; }
+    .pred-conf { font-size: 10px; color: #5a7080; margin-top: 2px; }
+
+    /* Agent status */
+    .agent-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .agent-item {
+      background: rgba(0,200,255,0.05);
+      border: 1px solid rgba(0,200,255,0.1);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 12px;
+    }
+
+    .agent-item .name { font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+    .agent-item .desc { color: var(--dim); font-size: 11px; }
+
+    /* Refresh button */
+    .btn {
+      padding: 8px 18px;
+      border-radius: 8px;
+      border: none;
+      font-size: 12px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: var(--accent); color: #000; font-weight: 700; }
+    .btn-primary:hover { filter: brightness(1.15); }
+    .btn-report { background: rgba(0,200,255,0.15); color: var(--accent); border: 1px solid rgba(0,200,255,0.3); font-weight: 700; }
+    .btn-report:hover { background: rgba(0,200,255,0.25); }
+    .btn-outline { background: transparent; color: var(--dim); border: 1px solid var(--border); }
+    .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+
+    .refresh-info { font-size: 11px; color: var(--dim); }
+
+    .last-updated { font-size: 11px; color: var(--dim); margin-left: 12px; }
+
+    .loading-overlay {
+      position: fixed; inset: 0;
+      background: rgba(6,13,26,0.8);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 999;
+      font-size: 14px;
+      color: var(--accent);
+    }
+
+    .no-data {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 200px;
+      color: var(--dim);
+      font-size: 13px;
+      gap: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<div id="app">
+  <!-- Loading overlay -->
+  <div v-if="loading" class="loading-overlay">
+    <span>⏳ 数据治理 Swarm 运行中，数据加载后自动刷新...</span>
+  </div>
+
+  <!-- Header -->
+  <div id="app-header">
+    <h1>🛢️ Auto<span>DataFlow</span> 数据治理看板 <span>— Agent Swarm 健康度监控</span></h1>
+
+    <div class="header-stats">
+      <div class="header-stat">
+        <div class="val">{{ summary.total_tables || 0 }}</div>
+        <div class="lbl">数据表</div>
+      </div>
+      <div class="header-stat">
+        <div class="val">{{ summary.total_rows || 0 }}</div>
+        <div class="lbl">总行数</div>
+      </div>
+      <div class="header-stat">
+        <div class="val" :style="{ color: qualityColor }">{{ summary.avg_quality_score || 0 }}</div>
+        <div class="lbl">质量分</div>
+      </div>
+    </div>
+
+    <span :class="'badge ' + qualityBadgeClass">
+      {{ qualityLabel }}
+    </span>
+
+    <button class="btn btn-primary" @click="refreshData">
+      🔄 刷新数据
+    </button>
+    <button class="btn btn-report" @click="generateReport">
+      📝 生成报告
+    </button>
+    <span class="last-updated" v-if="lastUpdated">
+      最后更新: {{ lastUpdated }}
+    </span>
+  </div>
+
+  <!-- Main Grid -->
+  <div class="main-grid">
+
+    <!-- 1. Quality Gauge -->
+    <div class="card quality-gauge-card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">📊 综合健康度</div>
+          <div class="card-subtitle">数据质量评分（0-100）</div>
+        </div>
+      </div>
+      <div id="gauge-chart" class="chart"></div>
+      <div style="display:flex; gap:8px; margin-top:8px">
+        <div v-for="table in tables" :key="table.name" class="agent-item" style="flex:1">
+          <div class="name">{{ table.name }}</div>
+          <div class="desc">行数: {{ table.row_count }} | 质量: {{ table.quality_score }}/100</div>
+        </div>
+      </div>
+    
+    <!-- 7. Data Sources -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">🗄️ 多数据源连接</div>
+          <div class="card-subtitle">MySQL · PostgreSQL · SQL Server · MongoDB</div>
+        </div>
+      </div>
+      <div id="dataSourcesContainer">
+        <div style="color:var(--dim);padding:12px">加载中...</div>
+      </div>
+    </div>
+</div>
+
+    <!-- 2. Table Quality Bar -->
+    <div class="card table-quality-card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">📋 各表质量评估</div>
+          <div class="card-subtitle">Null率 / 异常值检测 / 唯一性</div>
+        </div>
+      </div>
+      <div id="bar-chart" class="chart"></div>
+    </div>
+
+  </div>
+
+  <!-- Bottom Grid -->
+  <div style="padding: 0 20px 16px">
+    <div class="bottom-grid">
+
+      <!-- 3. Quality Trend -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">&#128200; 质量趋势 + 预测</div>
+            <div class="card-subtitle">最近 10 次 + AI 预测</div>
+          </div>
+        </div>
+        <div id="trend-chart" style="height:200px"></div>
+      </div>
+
+      <!-- 4. Predictive Analytics -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">&#9889; AI 预测分析</div>
+            <div class="card-subtitle">下轮质量 / 异常检测 / 根因</div>
+          </div>
+        </div>
+        <div id="predictive-content" style="font-size:12px;color:#9ca3af"></div>
+      </div>
+
+      <!-- 5. Schema Change Timeline -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">&#128197; Schema 变更记录</div>
+            <div class="card-subtitle">最近 5 次结构变更</div>
+          </div>
+        </div>
+        <div id="schema-timeline" class="schema-timeline"></div>
+      </div>
+
+      <!-- 6. Data Lineage Flow -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">&#129489; 数据血缘链路</div>
+            <div class="card-subtitle">Source → Agent → Output</div>
+          </div>
+        </div>
+        <div id="lineage-flow" class="lineage-flow"></div>
+      </div>
+
+      <!-- 4. Null Rate Distribution -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">🕳️ 空值率分布</div>
+            <div class="card-subtitle">各列 Null 占比</div>
+          </div>
+        </div>
+        <div id="null-chart" style="height:200px"></div>
+      </div>
+
+      <!-- 5. Agent Status -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">🤖 Agent 状态</div>
+            <div class="card-subtitle">实时监控</div>
+          </div>
+        </div>
+        <div class="agent-grid">
+          <div class="agent-item">
+            <div class="name">Schema Agent</div>
+            <div class="desc">CSV/JSON → DDL → SQLite</div>
+            <div style="margin-top:6px">
+              <span :class="'badge ' + (schemaStatus === 'ok' ? 'badge-ok' : 'badge-warn')">
+                {{ schemaStatus === 'ok' ? '● 运行中' : '⚠ 检查中' }}
+              </span>
+            </div>
+          </div>
+          <div class="agent-item">
+            <div class="name">ETL Agent</div>
+            <div class="desc">Polars 清洗 / Null 填充</div>
+            <div style="margin-top:6px">
+              <span class="badge badge-ok">● 运行中</span>
+            </div>
+          </div>
+          <div class="agent-item">
+            <div class="name">Observer Agent</div>
+            <div class="desc">压力测试 / 自动索引</div>
+            <div style="margin-top:6px">
+              <span class="badge badge-ok">● 运行中</span>
+            </div>
+          </div>
+          <div class="agent-item">
+            <div class="name">Viz Agent</div>
+            <div class="desc">ECharts 看板渲染</div>
+            <div style="margin-top:6px">
+              <span class="badge badge-ok">● 运行中</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:14px">
+          <div class="card-subtitle" style="margin-bottom:8px">最近变更</div>
+          <div v-for="change in recentChanges" :key="change" style="font-size:11px;color:var(--dim);padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.03)">
+            {{ change }}
+          </div>
+          <div v-if="!recentChanges.length" style="font-size:11px;color:var(--dim)">
+            暂无Schema变更
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const { createApp, ref, computed, onMounted, watch, nextTick } = Vue;
+
+const API_BASE = '../backend/data';
+
+const app = createApp({
+  setup() {
+    const loading = ref(true);
+    const lastUpdated = ref('');
+    const summary = ref({});
+    const tables = ref([]);
+    const dataSources = ref([]);
+    const trendData = ref([]);
+    const nullDistribution = ref([]);
+    const schemaStatus = ref('ok');
+    const recentChanges = ref([]);
+
+    let gaugeChart = null;
+    let barChart = null;
+    let trendChart = null;
+    let nullChart = null;
+
+    const qualityColor = computed(() => {
+      const s = summary.value.avg_quality_score || 0;
+      if (s >= 90) return 'var(--green)';
+      if (s >= 70) return 'var(--yellow)';
+      return 'var(--red)';
+    });
+
+    const qualityBadgeClass = computed(() => {
+      const s = summary.value.avg_quality_score || 0;
+      if (s >= 90) return 'badge-ok';
+      if (s >= 70) return 'badge-warn';
+      return 'badge-bad';
+    });
+
+    const qualityLabel = computed(() => {
+      const s = summary.value.avg_quality_score || 0;
+      if (s >= 90) return '优秀';
+      if (s >= 70) return '良好';
+      if (s >= 50) return '一般';
+      return '需治理';
+    });
+
+    function qualityBarClass(score) {
+      if (score >= 90) return 'bar-high';
+      if (score >= 70) return 'bar-mid';
+      return 'bar-low';
+    }
+
+    async function loadData() {
+      try {
+        const [healthRes, trendRes, predRes, schemaRes, lineageRes, sourcesRes] = await Promise.allSettled([
+          fetch(`${API_BASE}/health_report.json?_=${Date.now()}`),
+          fetch(`${API_BASE}/quality_trend.json?_=${Date.now()}`),
+          fetch(`${API_BASE}/predictive_analytics.json?_=${Date.now()}`),
+          fetch(`${API_BASE}/schema_changes.json?_=${Date.now()}`),
+          fetch(`${API_BASE}/lineage.json?_=${Date.now()}`),
+          fetch(`${API_BASE}/data_sources.json?_=${Date.now()}`),
+        ]);
+
+        if (healthRes.status === 'rejected') throw new Error('Cannot load health_report.json');
+        const health = await healthRes.value.json();
+
+        summary.value = {
+          total_tables: health.total_tables,
+          total_rows: health.total_rows,
+          avg_quality_score: health.avg_quality_score,
+        };
+        tables.value = health.tables || [];
+
+        // Load data sources
+        if (sourcesRes.status === 'fulfilled') {
+          const sourcesData = await sourcesRes.value.json();
+          dataSources.value = sourcesData.sources || [];
+        }
+
+        // Null distribution
+        const nulls = [];
+        for (const table of (health.tables || [])) {
+          for (const col of (table.columns || [])) {
+            if (col.null_pct > 0) {
+              nulls.push({ name: `${table.name}.${col.name}`, value: Math.round(col.null_pct * 100) });
+            }
+          }
+        }
+        nullDistribution.value = nulls.slice(0, 12);
+
+        // Trend data
+        if (trendRes.status === 'fulfilled') {
+          try {
+            const trend = await trendRes.value.json();
+            trendData.value = trend.history || [];
+          } catch { trendData.value = []; }
+        }
+
+        // Parse predictive analytics
+        window._predData = null;
+        if (predRes.status === 'fulfilled') {
+          try { window._predData = await predRes.value.json(); } catch {}
+        }
+
+        // Parse schema changes
+        window._schemaData = null;
+        if (schemaRes.status === 'fulfilled') {
+          try { window._schemaData = await schemaRes.value.json(); } catch {}
+        }
+
+        // Parse lineage
+        window._lineageData = null;
+        if (lineageRes.status === 'fulfilled') {
+          try { window._lineageData = await lineageRes.value.json(); } catch {}
+        }
+
+        loading.value = false;
+        lastUpdated.value = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+
+        await nextTick();
+        renderCharts();
+        renderPredictiveCharts();
+
+      } catch (err) {
+        console.error('Load error:', err);
+        // Try loading without timestamp busting
+        try {
+          const health = await fetch(API_BASE + '/health_report.json').then(r => r.json());
+          summary.value = { total_tables: health.total_tables, total_rows: health.total_rows, avg_quality_score: health.avg_quality_score };
+          tables.value = health.tables || [];
+
+        // Load data sources
+        if (sourcesRes.status === 'fulfilled') {
+          const sourcesData = await sourcesRes.value.json();
+          dataSources.value = sourcesData.sources || [];
+        }
+          loading.value = false;
+          await nextTick();
+          renderCharts();
+        } catch (e) {
+          loading.value = false;
+        }
+      }
+    }
+
+    function renderCharts() {
+      renderGauge();
+      renderBar();
+      renderTrend();
+      renderNull();
+    }
+
+    function renderGauge() {
+      const el = document.getElementById('gauge-chart');
+      if (!el) return;
+      if (!gaugeChart) gaugeChart = echarts.init(el);
+      const score = summary.value.avg_quality_score || 0;
+      gaugeChart.setOption({
+        series: [{
+          type: 'gauge',
+          startAngle: 200,
+          endAngle: -20,
+          min: 0, max: 100,
+          splitNumber: 5,
+          radius: '90%',
+          center: ['50%', '60%'],
+          itemStyle: {
+            color: score >= 90 ? '#00e676' : score >= 70 ? '#ffca28' : '#ff5252',
+            shadowColor: score >= 90 ? 'rgba(0,230,118,0.5)' : score >= 70 ? 'rgba(255,202,40,0.5)' : 'rgba(255,82,82,0.5)',
+            shadowBlur: 15,
+          },
+          progress: { show: true, width: 18, roundCap: true },
+          pointer: { show: false },
+          axisLine: { lineStyle: { width: 18, color: [[1, 'rgba(255,255,255,0.06)']] } },
+          axisTick: { show: false },
+          splitLine: { show: false },
+          axisLabel: { show: false },
+          anchor: { show: false },
+          title: { show: false },
+          detail: {
+            valueAnimation: true,
+            fontSize: 36,
+            fontWeight: 'bold',
+            fontFamily: 'Segoe UI',
+            formatter: '{value}',
+            color: score >= 90 ? '#00e676' : score >= 70 ? '#ffca28' : '#ff5252',
+            offsetCenter: [0, '10%'],
+          },
+          data: [{ value: Math.round(score) }],
+        }],
+      });
+    }
+
+    function renderBar() {
+      const el = document.getElementById('bar-chart');
+      if (!el) return;
+      if (!barChart) barChart = echarts.init(el);
+      const tbls = tables.value.map(t => ({
+        name: t.name.length > 15 ? t.name.slice(0, 15) + '...' : t.name,
+        score: t.quality_score,
+        rows: t.row_count,
+      }));
+      barChart.setOption({
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+        grid: { left: 10, right: 10, top: 10, bottom: 30, containLabel: true },
+        xAxis: { type: 'value', max: 100, splitLine: { lineStyle: { color: 'rgba(255,255,255,0.04)' } }, axisLabel: { color: '#5a7080', fontSize: 11 } },
+        yAxis: { type: 'category', data: tbls.map(t => t.name), axisLabel: { color: '#5a7080', fontSize: 11 }, axisLine: { lineStyle: { color: 'rgba(255,255,255,0.08)' } } },
+        series: [{
+          type: 'bar',
+          data: tbls.map(t => ({
+            value: t.score,
+            itemStyle: {
+              color: t.score >= 90 ? { type: 'linear', x: 0, y: 0, x2: 1, y2: 0, colorStops: [{ offset: 0, color: '#00c8ff' }, { offset: 1, color: '#00e676' }] }
+                : t.score >= 70 ? { type: 'linear', x: 0, y: 0, x2: 1, y2: 0, colorStops: [{ offset: 0, color: '#ffca28' }, { offset: 1, color: '#ff9800' }] }
+                : { type: 'linear', x: 0, y: 0, x2: 1, y2: 0, colorStops: [{ offset: 0, color: '#ff5252' }, { offset: 1, color: '#d50000' }] },
+              borderRadius: [0, 4, 4, 0],
+            },
+          })),
+          barWidth: 18,
+          label: { show: true, position: 'right', color: '#5a7080', fontSize: 11, formatter: '{c}' },
+        }],
+      });
+    }
+
+    function renderTrend() {
+      const el = document.getElementById('trend-chart');
+      if (!el) return;
+      if (!trendChart) trendChart = echarts.init(el);
+      const data = trendData.value.length ? trendData.value : [{ ts: new Date().toLocaleTimeString(), score: summary.value.avg_quality_score || 0 }];
+      trendChart.setOption({
+        tooltip: { trigger: 'axis' },
+        grid: { left: 10, right: 10, top: 10, bottom: 30, containLabel: true },
+        xAxis: { type: 'category', data: data.map(d => d.ts || d.time || ''), axisLabel: { color: '#5a7080', fontSize: 10, rotate: 30 }, axisLine: { lineStyle: { color: 'rgba(255,255,255,0.08)' } } },
+        yAxis: { type: 'value', min: 0, max: 100, splitLine: { lineStyle: { color: 'rgba(255,255,255,0.04)' } }, axisLabel: { color: '#5a7080', fontSize: 11 } },
+        series: [
+          {
+            name: '实际分数',
+            type: 'line',
+            data: data.map(d => d.score || 0),
+            smooth: true,
+            lineStyle: { color: '#00c8ff', width: 2 },
+            areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(0,200,255,0.3)' }, { offset: 1, color: 'rgba(0,200,255,0)' }] } },
+            symbol: 'circle', symbolSize: 6,
+            itemStyle: { color: '#00c8ff' },
+          },
+          // Predictive overlay
+          ...(() => {
+            const pred = window._predData;
+            if (!pred || !pred.predictions || !pred.predictions.length) return [];
+            const p = pred.predictions[0];
+            const baseScore = data.length > 0 ? (data[data.length - 1].score || 80) : 80;
+            return [{
+              name: 'AI预测',
+              type: 'line',
+              data: [...data.map(d => null), p.predicted_quality_score, p.predicted_quality_score * 0.97, p.predicted_quality_score * 0.94],
+              smooth: true,
+              lineStyle: { color: '#ff9d00', width: 2, type: 'dashed' },
+              symbol: 'diamond', symbolSize: 6,
+              itemStyle: { color: '#ff9d00' },
+              label: { show: true, formatter: function(par) { return par.data != null ? Math.round(par.data) + '' : ''; }, fontSize: 9, color: '#ff9d00' },
+            }];
+          })()
+        ],
+      });
+    }
+
+    function renderPredictive() {
+      const el = document.getElementById('predictive-content');
+      if (!el) return;
+      const pred = window._predData;
+      if (!pred || !pred.predictions || !pred.predictions.length) {
+        el.innerHTML = '<div style="color:#5a7080;font-size:12px;padding:12px">暂无预测数据 (生成中...)</div>';
+        return;
+      }
+      const p = pred.predictions[0];
+      const qpct = Math.round(p.predicted_quality_score);
+      const conf = p.confidence || 0;
+      const confColor = conf >= 0.9 ? '#00e676' : conf >= 0.7 ? '#ffca28' : '#ff5252';
+      let html = '<div style="margin-bottom:10px">';
+      html += '<div style="display:flex;justify-content:space-between;font-size:11px;color:#5a7080;margin-bottom:4px">';
+      html += '<span>预测质量</span><span style="color:' + confColor + ';font-weight:700">' + qpct + '/100</span></div>';
+      html += '<div style="height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden">';
+      html += '<div style="height:100%;width:' + qpct + '%;background:linear-gradient(90deg,#00c8ff,#00e676);border-radius:3px;transition:width 0.6s"></div></div>';
+      html += '<div style="font-size:10px;color:#5a7080;margin-top:3px">置信度: ' + Math.round(conf * 100) + '%</div></div>';
+      if (p.anomaly_alerts && p.anomaly_alerts.length) {
+        html += '<div style="margin-top:8px"><div style="font-size:11px;font-weight:700;color:#ff5252;margin-bottom:6px">&#9888; 异常预警</div>';
+        p.anomaly_alerts.forEach(function(a) {
+          const sev = a.severity === 'high' ? '' : ' warn';
+          html += '<div class="anomaly-alert' + sev + '"><span class="anomaly-icon">' + (a.severity === 'high' ? '&#9888;' : '&#9889;') + '</span>';
+          html += '<div class="anomaly-text"><strong>' + a.field + '</strong>: ' + a.description + '</div></div>';
+        });
+        html += '</div>';
+      } else {
+        html += '<div style="font-size:11px;color:#00e676;margin-top:8px;padding:6px;background:rgba(0,230,118,0.05);border-radius:6px">&#10004; 暂未检测到异常</div>';
+      }
+      if (p.root_cause) {
+        html += '<div style="margin-top:8px;font-size:11px;color:#9ca3af;padding:6px;background:rgba(0,200,255,0.05);border-radius:6px">&#129504; 根因: <span style="color:#e0e8f0">' + p.root_cause + '</span></div>';
+      }
+      el.innerHTML = html;
+    }
+
+    function renderSchemaTimeline() {
+      const el = document.getElementById('schema-timeline');
+      if (!el) return;
+      const schema = window._schemaData;
+      if (!schema || !schema.changes || !schema.changes.length) {
+        el.innerHTML = '<div style="font-size:11px;color:#5a7080;padding:8px">暂无变更记录 (生成中...)</div>';
+        return;
+      }
+      let html = '';
+      schema.changes.slice(0, 5).forEach(function(c) {
+        const tc = c.change_type === 'added' ? 'add' : c.change_type === 'removed' ? 'del' : 'mod';
+        html += '<div class="schema-event ' + tc + '">';
+        html += '<div class="schema-time">' + (c.timestamp || '') + '</div>';
+        html += '<div><span class="schema-type">' + (c.change_type || '').toUpperCase() + '</span> ' + (c.description || '') + '</div>';
+        if (c.impact) html += '<div style="color:#5a7080;font-size:10px;margin-top:2px">影响: ' + c.impact + '</div>';
+        html += '</div>';
+      });
+      el.innerHTML = html;
+    }
+
+    function renderLineageFlow() {
+      const el = document.getElementById('lineage-flow');
+      if (!el) return;
+      const lineage = window._lineageData;
+      if (!lineage || !lineage.lineage || !lineage.lineage.length) {
+        el.innerHTML = '<div style="font-size:11px;color:#5a7080;padding:8px">暂无血缘数据 (生成中...)</div>';
+        return;
+      }
+      let html = '';
+      lineage.lineage.forEach(function(node, i) {
+        const cls = node.type === 'source' ? 'ln-src' : node.type === 'process' ? 'ln-proc' : 'ln-out';
+        html += '<div class="lineage-node ' + cls + '">' + (node.name || '') + '</div>';
+        if (i < lineage.lineage.length - 1) html += '<span class="lineage-arrow">&#8594;</span>';
+      });
+      el.innerHTML = html;
+    }
+
+    function renderPredictiveCharts() {
+      renderPredictive();
+      renderSchemaTimeline();
+      renderLineageFlow();
+    }
+
+    function renderNull() {
+      const el = document.getElementById('null-chart');
+      if (!el) return;
+      if (!nullChart) nullChart = echarts.init(el);
+      const data = nullDistribution.value.length ? nullDistribution.value : [{ name: '无空值', value: 0 }];
+      nullChart.setOption({
+        tooltip: { trigger: 'item', formatter: '{b}: {c}%' },
+        series: [{
+          type: 'pie',
+          radius: ['40%', '70%'],
+          center: ['50%', '50%'],
+          data: data.map((d, i) => ({
+            name: d.name,
+            value: d.value,
+            itemStyle: {
+              color: ['#00c8ff', '#ffca28', '#ff5252', '#6bcb77', '#ce93d8', '#80deea', '#ffa726', '#66bb6a', '#ef5350', '#ab47bc', '#42a5f5', '#78909c'][i % 12],
+            },
+          })),
+          label: { show: true, formatter: '{b}: {c}%', fontSize: 10, color: '#5a7080' },
+          labelLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } },
+        }],
+      });
+    }
+
+  function renderDataSources() {
+    const container = document.getElementById('dataSourcesContainer');
+    if (!container) return;
+    const sources = dataSources.value;
+    if (!sources || !sources.length) {
+      container.innerHTML = '<div style="color:var(--dim);padding:12px">暂无数据源</div>';
+      return;
+    }
+    let html = '<div class="sources-grid">';
+    sources.forEach(function(src) {
+      const statusIcon = src.status === 'connected' ? '<span style="color:var(--green)">●</span>' : '<span style="color:var(--yellow)">●</span>';
+      const typeIcons = {'MySQL': '🐬', 'PostgreSQL': '🐘', 'SQL Server': '💾', 'MongoDB': '🍃'};
+      const icon = typeIcons[src.type] || '📊';
+      const latencyColor = src.latency_ms < 20 ? 'var(--green)' : src.latency_ms < 50 ? 'var(--yellow)' : 'var(--red)';
+      html += '<div class="source-card' + (src.status === 'warning' ? ' source-warn' : '') + '">';
+      html += '<div class="source-header">' + statusIcon + ' <b>' + src.name + '</b> <span style="font-size:11px;color:var(--dim)">' + icon + ' ' + src.type + '</span></div>';
+      html += '<div class="source-detail">主机: <code>' + src.host + ':' + src.port + '</code></div>';
+      html += '<div class="source-detail">数据库: ' + src.database + '</div>';
+      html += '<div class="source-detail">表: ' + src.tables + ' 张 | 行数: ' + src.row_count.toLocaleString() + '</div>';
+      html += '<div class="source-detail">延迟: <span style="color:' + latencyColor + '">' + src.latency_ms + 'ms</span> | 质量: <span style="color:' + (src.quality_score >= 90 ? 'var(--green)' : 'var(--yellow)') + '">' + src.quality_score + '</span>/100</div>';
+      if (src.warning_message) {
+        html += '<div class="source-warn-msg">⚠️ ' + src.warning_message + '</div>';
+      }
+      html += '</div>';
+    });
+    html += '</div>';
+    container.innerHTML = html;
+  }
+
+
+    function refreshData() {
+      loading.value = true;
+      loadData();
+    }
+
+    function generateReport() {
+      // Trigger report generation via backend
+      const btn = document.querySelector('.btn-report');
+      if (btn) { btn.textContent = '⏳ 生成中...'; btn.disabled = true; }
+      fetch('../backend/generate_report.py', { method: 'POST' })
+        .then(r => r.text())
+        .then(() => {
+          if (btn) { btn.textContent = '✅ 已生成'; btn.disabled = false; }
+          setTimeout(() => {
+            if (btn) { btn.textContent = '📝 生成报告'; }
+            // Open the latest report
+            window.open('../backend/data/', '_blank');
+          }, 1500);
+        })
+        .catch(() => {
+          if (btn) { btn.textContent = '❌ 生成失败'; btn.disabled = false; }
+          setTimeout(() => {
+            if (btn) { btn.textContent = '📝 生成报告'; }
+          }, 2000);
+        });
+    }
+
+    onMounted(() => {
+      loadData();
+      // Auto-refresh every 30s
+      setInterval(loadData, 30000);
+      // Resize handler
+      window.addEventListener('resize', () => {
+        gaugeChart?.resize();
+        barChart?.resize();
+        trendChart?.resize();
+        nullChart?.resize();
+      });
+    });
+
+    return {
+      loading, lastUpdated, summary, tables, trendData, nullDistribution,
+      schemaStatus, recentChanges, qualityColor, qualityBadgeClass, qualityLabel,
+      refreshData, qualityBarClass, dataSources, dataSources, generateReport,
+    };
+  },
+});
+
+app.mount('#app');
+</script>
+</body>
+</html>

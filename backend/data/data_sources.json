@@ -1,0 +1,64 @@
+{
+  "sources": [
+    {
+      "id": "src_mysql",
+      "name": "MySQL Production",
+      "type": "MySQL",
+      "host": "rm-2ze8g5g9g8c5e4.mysql.rds.aliyuncs.com",
+      "port": 3306,
+      "database": "ecommerce_db",
+      "tables": 24,
+      "status": "connected",
+      "latency_ms": 12,
+      "last_sync": "2026-04-25T02:30:00Z",
+      "row_count": 2847392,
+      "quality_score": 94
+    },
+    {
+      "id": "src_pg",
+      "name": "PostgreSQL Analytics",
+      "type": "PostgreSQL",
+      "host": "pgm-2ze8g5g9g8c5e4.pg.rds.aliyuncs.com",
+      "port": 5432,
+      "database": "analytics_warehouse",
+      "tables": 18,
+      "status": "connected",
+      "latency_ms": 8,
+      "last_sync": "2026-04-25T02:28:00Z",
+      "row_count": 1284739,
+      "quality_score": 91
+    },
+    {
+      "id": "src_sqlserver",
+      "name": "SQL Server ERP",
+      "type": "SQL Server",
+      "host": "192.168.1.100",
+      "port": 1433,
+      "database": "ERP_PROD",
+      "tables": 56,
+      "status": "warning",
+      "latency_ms": 45,
+      "last_sync": "2026-04-25T01:55:00Z",
+      "row_count": 3847291,
+      "quality_score": 73,
+      "warning_message": "空值率偏高 (3.2%)"
+    },
+    {
+      "id": "src_mongo",
+      "name": "MongoDB Log",
+      "type": "MongoDB",
+      "host": "mongo-cluster.internal:27017",
+      "port": 27017,
+      "database": "application_logs",
+      "tables": 3,
+      "status": "connected",
+      "latency_ms": 5,
+      "last_sync": "2026-04-25T02:29:00Z",
+      "row_count": 12847392,
+      "quality_score": 88
+    }
+  ],
+  "total_sources": 4,
+  "connected": 3,
+  "warnings": 1
+}

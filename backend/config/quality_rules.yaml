@@ -1,0 +1,260 @@
+# AutoDataFlow 质量规则配置
+# ==============================
+# 控制数据质量评估的各项阈值和权重
+# 扩展方法：添加新表的质量规则或调整阈值，无需改代码
+
+# 质量评分权重（总和 = 1.0）
+scoring_weights:
+  null_rate:   0.40   # Null值率权重
+  outlier_rate: 0.35  # 异常值率权重
+  uniqueness:  0.25   # 唯一性权重
+
+# 各指标评分基准
+null_thresholds:
+  critical: 0.30   # >30% null → 严重问题
+  warning:  0.10   # >10% null → 警告
+
+outlier_thresholds:
+  critical: 0.05   # >5% 异常值 → 严重
+  warning:  0.02   # >2% 异常值 → 警告
+
+# 告警阈值（用于 webhook_alert.py）
+alert_thresholds:
+  quality_score_min:   70    # 质量分低于此值触发告警
+  null_rate_max:       0.05  # 空值率超过此值触发告警
+  outlier_count_max:   10    # 异常数超过此值触发告警
+
+# 质量等级划分
+quality_grades:
+  excellent: 90
+  good:      75
+  fair:      60
+  poor:      0
+
+# 表级质量规则（可按表名覆盖全局配置）
+table_rules:
+  ods_raw_data:
+    null_threshold: 0.40    # ODS 层容忍更高 null 率
+    outlier_threshold: 0.10
+
+  dwd_cleaned:
+    null_threshold: 0.05    # DWD 层要求更严格
+    outlier_threshold: 0.03
+
+  ads_report:
+    null_threshold: 0.02    # ADS 层最严格
+    outlier_threshold: 0.01
+
+# ==============================================================================
+# 可配置数据质量规则（用户自定义规则引擎）
+# ==============================================================================
+# 规则类型：
+#   null_check      — 字段必须非空
+#   regex_match     — 字段值必须匹配正则表达式
+#   range_check     — 数值字段必须在 [min, max] 范围内
+#   uniqueness      — 字段值必须唯一（无重复）
+#   datatype_check  — 字段类型必须匹配预期类型
+#   length_check    — 字符串长度必须在 [min_len, max_len] 之间
+#   freshness_check — 数据时间戳必须在 N 分钟内（数据新鲜度）
+#   enum_check      — 字段值必须在允许的枚举列表中
+
+data_quality_rules:
+  # 默认规则（适用于所有表）
+  defaults:
+    - id: "default_not_null"
+      type: "null_check"
+      description: "必填字段不允许为空"
+      enabled: true
+      severity: "critical"
+
+    - id: "default_regex_email"
+      type: "regex_match"
+      field: "email"
+      pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+      description: "email 字段必须符合邮箱格式"
+      enabled: true
+      severity: "critical"
+
+    - id: "default_regex_phone"
+      type: "regex_match"
+      field: "phone"
+      pattern: "^1[3-9]\\d{9}$"
+      description: "phone 字段必须符合中国手机号格式"
+      enabled: true
+      severity: "warning"
+
+  # 表级规则（key = 表名，支持通配符 *）
+  table_rules:
+    "ods_sales":
+      - id: "sales_amount_positive"
+        type: "range_check"
+        field: "amount"
+        min: 0
+        max: 1000000
+        description: "销售额必须为正数且不超过100万"
+        enabled: true
+        severity: "critical"
+
+      - id: "sales_quantity_positive"
+        type: "range_check"
+        field: "quantity"
+        min: 1
+        max: 10000
+        description: "销售数量必须为正整数"
+        enabled: true
+        severity: "critical"
+
+      - id: "sales_region_enum"
+        type: "enum_check"
+        field: "region"
+        allowed_values: ["华北", "华东", "华南", "西南", "东北"]
+        description: "地区必须在允许的枚举值内"
+        enabled: true
+        severity: "warning"
+
+    "ods_products":
+      - id: "products_price_positive"
+        type: "range_check"
+        field: "price"
+        min: 0.01
+        max: 100000
+        description: "产品价格必须为正数"
+        enabled: true
+        severity: "critical"
+
+      - id: "products_stock_non_negative"
+        type: "range_check"
+        field: "stock"
+        min: 0
+        max: 1000000
+        description: "库存必须为非负整数"
+        enabled: true
+        severity: "critical"
+
+      - id: "products_name_not_empty"
+        type: "length_check"
+        field: "name"
+        min_len: 1
+        max_len: 200
+        description: "产品名称长度必须在1-200字符之间"
+        enabled: true
+        severity: "critical"
+
+    "*":
+      # 通配规则：所有表都必须满足
+      - id: "global_id_unique"
+        type: "uniqueness"
+        field: "order_id"
+        description: "order_id 必须唯一"
+        enabled: true
+        severity: "critical"
+
+# ==============================================================================
+# 行业合规规则库（Compliance Rule Library）
+# ==============================================================================
+# 适用标准：GDPR、个人信息保护法、数据安全法等
+# 规则类型：
+#   gdpr_field_masking    — 敏感字段脱敏（显示前4后2，中间****）
+#   pii_detection         — PII 字段检测（身份证、银行卡等）
+#   datatype_strict       — 严格数据类型校验
+#   data_freshness        — 数据新鲜度检查（N分钟内必须更新）
+#   referential_integrity — 引用完整性（外键检查）
+
+compliance_rules:
+  # GDPR 数据保护规则（示例）
+  gdpr:
+    - id: "gdpr_email_masking"
+      type: "gdpr_field_masking"
+      fields: ["email", "Email", "EMAIL"]
+      mask_pattern: "****{last}@{domain}"
+      description: "邮箱字段 GDPR 合规脱敏：a****@example.com"
+      enabled: true
+      severity: "critical"
+
+    - id: "gdpr_phone_masking"
+      type: "gdpr_field_masking"
+      fields: ["phone", "mobile", "tel", "telephone"]
+      mask_pattern: "****{last}"
+      description: "手机号脱敏：只显示后4位"
+      enabled: true
+      severity: "critical"
+
+    - id: "gdpr_id_card_masking"
+      type: "gdpr_field_masking"
+      fields: ["id_card", "idcard", "identity_card", "身份证"]
+      mask_pattern: "{first_3}****{last_4}"
+      description: "身份证号脱敏：显示前3后4，中间8位用****"
+      enabled: true
+      severity: "critical"
+
+    - id: "gdpr_bank_account_masking"
+      type: "gdpr_field_masking"
+      fields: ["bank_account", "bank_account_no", "bank_no", "银行卡号"]
+      mask_pattern: "****{last_4}"
+      description: "银行卡号脱敏：只显示后4位"
+      enabled: true
+      severity: "critical"
+
+    - id: "gdpr_address_masking"
+      type: "gdpr_field_masking"
+      fields: ["address", "home_address", "address_detail"]
+      mask_pattern: "****{last_4_chars}"
+      description: "地址脱敏：显示末尾4字符"
+      enabled: true
+      severity: "warning"
+
+  # 数据类型严格校验（结构化数据质量）
+  datatype_validation:
+    - id: "dt_date_iso_format"
+      type: "datatype_check"
+      field: "date"
+      expected_dtype: "date"
+      format: "YYYY-MM-DD"
+      description: "date 字段必须为 ISO 格式 YYYY-MM-DD"
+      enabled: true
+      severity: "critical"
+
+    - id: "dt_amount_numeric"
+      type: "datatype_check"
+      field: "amount"
+      expected_dtype: "float"
+      description: "amount 字段必须为数值类型"
+      enabled: true
+      severity: "critical"
+
+    - id: "dt_quantity_integer"
+      type: "datatype_check"
+      field: "quantity"
+      expected_dtype: "integer"
+      description: "quantity 字段必须为整数类型"
+      enabled: true
+      severity: "critical"
+
+  # 数据新鲜度检查
+  freshness:
+    - id: "freshness_5min"
+      type: "freshness_check"
+      timestamp_field: "date"
+      max_age_minutes: 5
+      description: "数据时间戳必须在最近5分钟内（实时数据要求）"
+      enabled: true
+      severity: "warning"
+
+    - id: "freshness_1day"
+      type: "freshness_check"
+      timestamp_field: "updated_at"
+      max_age_minutes: 1440
+      description: "数据更新时间必须在24小时内（批量数据要求）"
+      enabled: true
+      severity: "info"
+
+  # 引用完整性（外键检查）
+  referential_integrity:
+    - id: "ref_customer_exists"
+      type: "referential_integrity"
+      source_field: "customer_id"
+      target_table: "ods_products"
+      target_field: "product_id"
+      description: "customer_id 必须在 products 表中存在"
+      enabled: false   # 默认关闭，外键关系明确后再启用
+      severity: "critical"

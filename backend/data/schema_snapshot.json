@@ -1,0 +1,18 @@
+{
+  "ods_products": [
+    "product_id",
+    "name",
+    "price",
+    "category",
+    "stock"
+  ],
+  "ods_sales": [
+    "order_id",
+    "amount",
+    "quantity",
+    "region",
+    "date",
+    "customer_id",
+    "sales_rep"
+  ]
+}

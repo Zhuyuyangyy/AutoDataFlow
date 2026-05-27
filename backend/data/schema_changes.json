@@ -1,0 +1,30 @@
+{
+  "generated_at": "2026-04-25T00:16:00+08:00",
+  "total_changes": 3,
+  "changes": [
+    {
+      "timestamp": "2026-04-25 00:10:22",
+      "change_type": "added",
+      "table": "employee_dim",
+      "field": "email_verified",
+      "description": "新增字段 email_verified (BOOLEAN)",
+      "impact": "不影响现有查询，新字段默认为 NULL"
+    },
+    {
+      "timestamp": "2026-04-25 00:08:15",
+      "change_type": "modified",
+      "table": "employee_dim",
+      "field": "join_date",
+      "description": "字段类型变更 join_date: VARCHAR -> DATE",
+      "impact": "历史数据需迁移，建议使用 DATE_FORMAT 兼容性处理"
+    },
+    {
+      "timestamp": "2026-04-25 00:05:01",
+      "change_type": "added",
+      "table": "sales_fact",
+      "field": "channel_id",
+      "description": "新增字段 channel_id (INT)，关联渠道维度表",
+      "impact": "新增外键关联，ETL 逻辑需同步更新"
+    }
+  ]
+}

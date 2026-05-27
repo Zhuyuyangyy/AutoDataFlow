@@ -1,0 +1,290 @@
+[
+  {
+    "timestamp": "2026-04-25 00:25:00",
+    "table": "ods_products",
+    "column": "product_id",
+    "source_file": "products.csv",
+    "dtype": "String",
+    "null_pct": 0.0
+  },
+  {
+    "timestamp": "2026-04-25 00:25:00",
+    "table": "ods_products",
+    "column": "name",
+    "source_file": "products.csv",
+    "dtype": "String",
+    "null_pct": 0.0
+  },
+  {
+    "timestamp": "2026-04-25 00:25:00",
+    "table": "ods_products",
+    "column": "price",
+    "source_file": "products.csv",
+    "dtype": "Float64",
+    "null_pct": 0.0
+  },
+  {
+    "timestamp": "2026-04-25 00:25:00",
+    "table": "ods_products",
+    "column": "category",
+    "source_file": "products.csv",
+    "dtype": "String",
+    "null_pct": 0.0
+  },
+  {
+    "timestamp": "2026-04-25 00:25:00",
+    "table": "ods_products",
+    "column": "stock",
+    "source_file": "products.csv",
+    "dtype": "Int64",
+    "null_pct": 0.0
+  },
+  {
+    "timestamp": "2026-04-25 00:25:00",
+    "table": "ods_sales",
+    "column": "order_id",
+    "source_file": "sales.csv",
+    "dtype": "String",
+    "null_pct": 0.0
+  },
+  {
+    "timestamp": "2026-04-25 00:25:00",
+    "table": "ods_sales",
+    "column": "amount",
+    "source_file": "sales.csv",
+    "dtype": "Float64",
+    "null_pct": 0.0
+  },
+  {
+    "timestamp": "2026-04-25 00:25:00",
+    "table": "ods_sales",
+    "column": "quantity",
+    "source_file": "sales.csv",
+    "dtype": "Int64",
+    "null_pct": 0.0
+  },
+  {
+    "timestamp": "2026-04-25 00:25:00",
+    "table": "ods_sales",
+    "column": "region",
+    "source_file": "sales.csv",
+    "dtype": "String",
+    "null_pct": 0.0
+  },
+  {
+    "timestamp": "2026-04-25 00:25:00",
+    "table": "ods_sales",
+    "column": "date",
+    "source_file": "sales.csv",
+    "dtype": "String",
+    "null_pct": 0.0
+  },
+  {
+    "timestamp": "2026-04-25 00:25:00",
+    "table": "ods_sales",
+    "column": "customer_id",
+    "source_file": "sales.csv",
+    "dtype": "String",
+    "null_pct": 0.0
+  },
+  {
+    "timestamp": "2026-04-25 00:25:00",
+    "table": "ods_sales",
+    "column": "sales_rep",
+    "source_file": "sales.csv",
+    "dtype": "String",
+    "null_pct": 21.0
+  },
+  {
+    "timestamp": "2026-04-25 01:17:06",
+    "table": "ods_products",
+    "column": "product_id",
+    "source_file": "products.csv",
+    "dtype": "String",
+    "null_pct": 0.0
+  },
+  {
+    "timestamp": "2026-04-25 01:17:06",
+    "table": "ods_products",
+    "column": "name",
+    "source_file": "products.csv",
+    "dtype": "String",
+    "null_pct": 0.0
+  },
+  {
+    "timestamp": "2026-04-25 01:17:06",
+    "table": "ods_products",
+    "column": "price",
+    "source_file": "products.csv",
+    "dtype": "Float64",
+    "null_pct": 0.0
+  },
+  {
+    "timestamp": "2026-04-25 01:17:06",
+    "table": "ods_products",
+    "column": "category",
+    "source_file": "products.csv",
+    "dtype": "String",
+    "null_pct": 0.0
+  },
+  {
+    "timestamp": "2026-04-25 01:17:06",
+    "table": "ods_products",
+    "column": "stock",
+    "source_file": "products.csv",
+    "dtype": "Int64",
+    "null_pct": 0.0
+  },
+  {
+    "timestamp": "2026-04-25 01:17:06",
+    "table": "ods_sales",
+    "column": "order_id",
+    "source_file": "sales.csv",
+    "dtype": "String",
+    "null_pct": 0.0
+  },
+  {
+    "timestamp": "2026-04-25 01:17:06",
+    "table": "ods_sales",
+    "column": "amount",
+    "source_file": "sales.csv",
+    "dtype": "Float64",
+    "null_pct": 0.0
+  },
+  {
+    "timestamp": "2026-04-25 01:17:06",
+    "table": "ods_sales",
+    "column": "quantity",
+    "source_file": "sales.csv",
+    "dtype": "Int64",
+    "null_pct": 0.0
+  },
+  {
+    "timestamp": "2026-04-25 01:17:06",
+    "table": "ods_sales",
+    "column": "region",
+    "source_file": "sales.csv",
+    "dtype": "String",
+    "null_pct": 0.0
+  },
+  {
+    "timestamp": "2026-04-25 01:17:06",
+    "table": "ods_sales",
+    "column": "date",
+    "source_file": "sales.csv",
+    "dtype": "String",
+    "null_pct": 0.0
+  },
+  {
+    "timestamp": "2026-04-25 01:17:06",
+    "table": "ods_sales",
+    "column": "customer_id",
+    "source_file": "sales.csv",
+    "dtype": "String",
+    "null_pct": 0.0
+  },
+  {
+    "timestamp": "2026-04-25 01:17:06",
+    "table": "ods_sales",
+    "column": "sales_rep",
+    "source_file": "sales.csv",
+    "dtype": "String",
+    "null_pct": 20.6
+  },
+  {
+    "timestamp": "2026-04-25 01:17:28",
+    "table": "ods_products",
+    "column": "product_id",
+    "source_file": "products.csv",
+    "dtype": "String",
+    "null_pct": 0.0
+  },
+  {
+    "timestamp": "2026-04-25 01:17:28",
+    "table": "ods_products",
+    "column": "name",
+    "source_file": "products.csv",
+    "dtype": "String",
+    "null_pct": 0.0
+  },
+  {
+    "timestamp": "2026-04-25 01:17:28",
+    "table": "ods_products",
+    "column": "price",
+    "source_file": "products.csv",
+    "dtype": "Float64",
+    "null_pct": 0.0
+  },
+  {
+    "timestamp": "2026-04-25 01:17:28",
+    "table": "ods_products",
+    "column": "category",
+    "source_file": "products.csv",
+    "dtype": "String",
+    "null_pct": 0.0
+  },
+  {
+    "timestamp": "2026-04-25 01:17:28",
+    "table": "ods_products",
+    "column": "stock",
+    "source_file": "products.csv",
+    "dtype": "Int64",
+    "null_pct": 0.0
+  },
+  {
+    "timestamp": "2026-04-25 01:17:28",
+    "table": "ods_sales",
+    "column": "order_id",
+    "source_file": "sales.csv",
+    "dtype": "String",
+    "null_pct": 0.0
+  },
+  {
+    "timestamp": "2026-04-25 01:17:28",
+    "table": "ods_sales",
+    "column": "amount",
+    "source_file": "sales.csv",
+    "dtype": "Float64",
+    "null_pct": 0.0
+  },
+  {
+    "timestamp": "2026-04-25 01:17:28",
+    "table": "ods_sales",
+    "column": "quantity",
+    "source_file": "sales.csv",
+    "dtype": "Int64",
+    "null_pct": 0.0
+  },
+  {
+    "timestamp": "2026-04-25 01:17:28",
+    "table": "ods_sales",
+    "column": "region",
+    "source_file": "sales.csv",
+    "dtype": "String",
+    "null_pct": 0.0
+  },
+  {
+    "timestamp": "2026-04-25 01:17:28",
+    "table": "ods_sales",
+    "column": "date",
+    "source_file": "sales.csv",
+    "dtype": "String",
+    "null_pct": 0.0
+  },
+  {
+    "timestamp": "2026-04-25 01:17:28",
+    "table": "ods_sales",
+    "column": "customer_id",
+    "source_file": "sales.csv",
+    "dtype": "String",
+    "null_pct": 0.0
+  },
+  {
+    "timestamp": "2026-04-25 01:17:28",
+    "table": "ods_sales",
+    "column": "sales_rep",
+    "source_file": "sales.csv",
+    "dtype": "String",
+    "null_pct": 19.6
+  }
+]

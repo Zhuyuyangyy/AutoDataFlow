@@ -1,0 +1,55 @@
+# AutoDataFlow 独立规则配置文件
+# ================================
+# 用途：作为 rules_engine.py 的独立规则数据源
+# 注意：rule_engine.py 默认从 config/quality_rules.yaml 加载，
+#       此文件作为补充或独立配置源。
+
+# =============================================================================
+# 数据质量规则（5个示例规则）
+# =============================================================================
+data_quality_rules:
+  defaults:
+    # 规则1：非空检查
+    - id: "rule_non_null"
+      type: "null_check"
+      description: "必填字段不允许为空"
+      enabled: true
+      severity: "critical"
+
+    # 规则2：正则匹配（邮箱格式）
+    - id: "rule_regex_email"
+      type: "regex_match"
+      field: "email"
+      pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+      description: "email 字段必须符合邮箱格式"
+      enabled: true
+      severity: "critical"
+
+    # 规则3：范围检查（数值范围）
+    - id: "rule_range_amount"
+      type: "range_check"
+      field: "amount"
+      min: 0
+      max: 1000000
+      description: "金额字段必须在 0 到 1,000,000 之间"
+      enabled: true
+      severity: "critical"
+
+    # 规则4：新鲜度检查
+    - id: "rule_freshness"
+      type: "freshness_check"
+      timestamp_field: "updated_at"
+      max_age_minutes: 60
+      description: "数据必须在最近 60 分钟内更新"
+      enabled: true
+      severity: "warning"
+
+    # 规则5：唯一性检查
+    - id: "rule_unique_id"
+      type: "uniqueness"
+      field: "id"
+      description: "id 字段值必须唯一"
+      enabled: true
+      severity: "critical"
+
+  table_rules: {}

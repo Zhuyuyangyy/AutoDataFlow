@@ -1,0 +1,17 @@
+# AutoDataFlow v2.3 — Python 依赖
+# ================================
+# 核心框架
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+pydantic==2.9.2
+
+# 数据处理
+pyyaml==6.0.2
+polars==1.14.0
+
+# 报告导出（PDF 可选，weasyprint 未安装时降级为 HTML）
+weasyprint>=60.0               # HTML → PDF（pip install weasyprint 安装，非必须）
+loguru>=0.7.3              # 结构化日志（替代 print/logging）
+prometheus-client>=0.21.0  # Prometheus metrics 暴露
+tenacity>=9.0.0            # LLM/IO 重试（指数退避）
+gunicorn>=23.0.0           # 多 worker 部署
