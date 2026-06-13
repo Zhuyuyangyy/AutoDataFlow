@@ -1,19 +1,58 @@
+# ============================================================
+# AutoDataFlow v3.0 - Multi-stage Docker Build
+# ============================================================
+# Stage 1: Builder (install dependencies)
+FROM python:3.11-slim AS builder
+
+WORKDIR /build
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+
+# ============================================================
+# Stage 2: Runtime (minimal image)
+# ============================================================
 FROM python:3.11-slim
+
+# Security: run as non-root user
+RUN groupadd -r autodataflow && useradd -r -g autodataflow -d /app autodataflow
 
 WORKDIR /app
 
-COPY backend/requirements.txt 2>/dev/null || echo "polars>=0.19.0\nfastapi>=0.110.0\nuvicorn[standard]>=0.27.0\npydantic>=2.0.0" > backend/requirements.txt
+# Copy installed packages from builder
+COPY --from=builder /install /usr/local
 
-RUN pip install --no-cache-dir polars fastapi uvicorn[standard] pydantic
+# Copy application code
+COPY backend/ ./backend/
+COPY frontend/ ./frontend/
+COPY input_data/ ./input_data/
+COPY start.sh .
 
-COPY backend/ .
+# Create data directories with proper permissions
+RUN mkdir -p backend/data/logs backend/data/reports backend/config \
+    && chown -R autodataflow:autodataflow /app
 
-RUN mkdir -p data input_data
+# Install curl for healthcheck
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
 
-ENV ADF_DATA_DIR="./data" \
-    ADF_PORT=8080
+# Environment variables
+ENV ADF_DATA_DIR="./backend/data" \
+    ADF_PORT=8080 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    AUTODATAFLOW_API_KEY="dev-key-change-me" \
+    GUNICORN_WORKERS=4 \
+    GUNICORN_THREADS=2 \
+    GUNICORN_TIMEOUT=60
 
 EXPOSE 8080
 
-# 首次启动时自动运行 Agent Swarm 分析
-CMD ["sh", "-c", "python auto_data_flow.py && python app.py"]
+USER autodataflow
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=15s \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+# Run analysis then start the API server
+CMD ["sh", "-c", "cd backend && python auto_data_flow.py && gunicorn app:app -c gunicorn_conf.py"]

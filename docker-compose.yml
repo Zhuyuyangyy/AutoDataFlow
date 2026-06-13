@@ -1,0 +1,36 @@
+version: "3.8"
+
+services:
+  autodataflow:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: autodataflow
+    ports:
+      - "8080:8080"
+    environment:
+      - AUTODATAFLOW_API_KEY=${AUTODATAFLOW_API_KEY:-dev-key-change-me}
+      - GUNICORN_WORKERS=4
+      - GUNICORN_THREADS=2
+      - GUNICORN_TIMEOUT=60
+    volumes:
+      - autodataflow_data:/app/data
+      - autodataflow_input:/app/input_data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "2.0"
+        reservations:
+          memory: 512M
+
+volumes:
+  autodataflow_data:
+  autodataflow_input:

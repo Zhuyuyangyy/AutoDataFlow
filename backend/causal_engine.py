@@ -287,7 +287,7 @@ class CausalGraphBuilder:
             # 如果统计推断失败，回退到硬编码方式
             import warnings
             warnings.warn(f"Statistical inference failed: {e}, falling back to pattern matching")
-            for table in self._nodes.keys():
+            for table in self.nodes.keys():
                 if '.' in table:
                     t, c = table.split('.', 1)
                     self._infer_foreign_key_edges(None, t, c)

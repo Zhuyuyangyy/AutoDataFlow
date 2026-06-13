@@ -1,514 +1,387 @@
-# AutoDataFlow v3.0 — 因果驱动的Schema演变预测平台
+# AutoDataFlow v3.0
 
-> **版本**: v3.0 | **技术栈**: FastAPI + Vue3 + ECharts + 因果推断引擎
-> **状态**: 🚀 生产就绪 | **核心**: CausalLineageGraph + Do-Calculus + CounterfactualReasoner
+**Causal-Driven Data Health Governance Platform | Automatic Data Flow / ETL**
 
----
+[![CI](https://github.com/AutoDataFlow/AutoDataFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/AutoDataFlow/AutoDataFlow/actions/workflows/ci.yml)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Docker](https://img.shields.io/badge/Docker-ready-blue.svg)](Dockerfile)
 
-## 🎯 项目定位
-
-AutoDataFlow 从"Schema变更检测工具"升级为**因果驱动的Schema演变预测框架**。
-
-**核心价值**: 在Schema变更发生之前，预测其对下游ETL任务的影响范围，实现从被动响应到主动预防的跃迁。
+> AutoDataFlow constructs causal lineage graphs over data warehouse schemas, applies Do-Calculus intervention reasoning to forecast downstream ETL breakage, and performs counterfactual quality analysis before destructive schema changes are deployed.
 
 ---
 
-## 🔬 四大核心创新点
+## Table of Contents
 
-| 创新点 | 代码模块 | 技术方案 | 效果 |
-|--------|----------|----------|------|
-| **C1 因果血缘图谱** | `causal_engine.py` | CausalEdge(5种机制) + SchemaNode | 从"相关性"升级到"因果性" |
-| **C2 Do-Calculus变更预测** | `CausalSchemaEngine.predict_impact()` | P(Y\|do(X)) 干预推理 | 提前识别受影响的ETL任务 |
-| **C3 反事实质量推理** | `CounterfactualReasoner` | factual/counterfactual/difference | 回答"如果...会怎样" |
-| **C4 多Agent因果协作** | `app.py` | Schema→ETL→Observer→Viz Agent | 端到端自治 |
+- [Overview](#overview)
+- [Key Features](#key-features)
+- [Architecture](#architecture)
+- [Tech Stack](#tech-stack)
+- [Quick Start](#quick-start)
+- [Docker Deployment](#docker-deployment)
+- [Project Structure](#project-structure)
+- [Core Modules](#core-modules)
+- [API Reference](#api-reference)
+- [Configuration](#configuration)
+- [Testing](#testing)
+- [Innovation & Patents](#innovation--patents)
+- [Roadmap](#roadmap)
+- [License](#license)
 
 ---
 
-## 🏗️ 系统架构
+## Overview
 
-### v3.0 完整架构
+Modern data warehouses evolve continuously: columns are renamed, data types are narrowed, tables are split or merged. Each such change propagates through downstream ETL jobs, dashboards, and analytical models. Existing tools detect data quality issues **after** they occur but cannot predict the impact of a schema change **before** it is applied.
+
+AutoDataFlow addresses this gap by introducing **causal inference** into schema lineage analysis. Rather than treating lineage as a correlation graph, it models lineage as a **causal graph** where each edge carries a mechanism label and a strength/confidence score.
+
+---
+
+## Key Features
+
+### Core Innovation
+
+- **Causal Lineage Graph** -- Automatic extraction of causal edges from warehouse metadata, DDL, and ETL job definitions with five mechanism types (FOREIGN_KEY, ETL_TRANSFORM, SCHEMA_DEPENDENCY, QUALITY_PROPAGATION, CASCADING_FAILURE).
+- **Do-Calculus Impact Prediction** -- Formal intervention reasoning (Pearl's do-operator) to answer "if we drop column X, which ETL jobs will break and with what probability?"
+- **Counterfactual Quality Inference** -- What-if analysis comparing the observed data quality trajectory against the hypothetical trajectory under a proposed schema change.
+- **Multi-Agent Architecture** -- Schema Agent, ETL Agent, Observer Agent, Visualization Agent coordinated through a shared causal graph.
+
+### Industrial-Grade Platform
+
+- **Configurable Rule Engine** -- YAML-driven data quality rules (null_check, regex_match, range_check, uniqueness, freshness, enum_check).
+- **Multi-Target ETL Cleaning** -- Polars-driven data cleaning with 15+ strategies (IQR outlier clipping, null filling, deduplication, winsorization).
+- **Industry Compliance** -- GDPR, PIPL, DSL compliance rules with field-level masking (email, phone, ID card, bank account).
+- **Report Export** -- HTML/PDF quality reports with trend visualization.
+- **Webhook Alerts** -- Feishu and DingTalk integration with retry and degradation.
+- **Observability** -- Structured logging (loguru), Prometheus metrics, per-request tracing.
+- **Security** -- Sliding-window rate limiting, CORS whitelist, security headers (HSTS, CSP, X-Frame-Options).
+- **Production Deployment** -- Gunicorn multi-worker, Docker, health checks.
+
+---
+
+## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    AutoDataFlow v3.0 完整架构                    │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ┌─────────────┐    do(change)    ┌──────────────────────┐     │
-│  │ Schema Agent│ ──────────────▶ │  因果血缘图谱构建器   │     │
-│  └─────────────┘                  │ CausalLineageGraph   │     │
-│         │                         └──────────┬───────────┘     │
-│         │                                    │                 │
-│         ▼                           ┌────────▼───────────┐     │
-│  ┌─────────────┐                    │  Do-Calculus 推理  │     │
-│  │ ETL Agent   │ ◀─────────────────│ CausalSchemaEngine │     │
-│  └─────────────┘   predict_impact()└──────────┬─────────┘     │
-│         │                                    │                 │
-│         ▼                           ┌────────▼───────────┐     │
-│  ┌─────────────┐                    │ 反事实推理引擎    │     │
-│  │Observer Agent│ ◀────────────────│CounterfactualReas.│     │
-│  └─────────────┘  what-if分析       └──────────┬─────────┘     │
-│         │                                    │                 │
-│         ▼                           ┌────────▼───────────┐     │
-│  ┌─────────────┐                    │  Viz Agent         │     │
-│  │  WebSocket  │ ◀─────────────────│  报告+告警+可视化  │     │
-│  └─────────────┘                    └───────────────────┘     │
-└─────────────────────────────────────────────────────────────────┘
++---------------------------+
+|   Vue3 + ECharts Dashboard|
++------------+--------------+
+             |
+             v
++------------------------------------------------------+
+|                FastAPI Application                     |
++------------------------------------------------------+
+|  +-------------+   do(change)  +-------------------+ |
+|  | Schema Agent| ------------> | Causal Lineage    | |
+|  +------+------+               | Graph Builder     | |
+|         |                      +--------+----------+ |
+|         v                               |            |
+|  +-------------+               +--------v----------+ |
+|  | ETL Agent   | <-------------| Do-Calculus Engine| |
+|  +------+------+               +--------+----------+ |
+|         |                               |            |
+|         v                      +--------v----------+ |
+|  +-------------+               | Counterfactual    | |
+|  |Observer Agt.| <-------------| Reasoner          | |
+|  +------+------+               +--------+----------+ |
+|         |                               |            |
+|         v                      +--------v----------+ |
+|  +-------------+               | Viz Agent         | |
+|  |  Alerts     | <-------------| Reports + Alerts  | |
+|  +-------------+               +-------------------+ |
++------------------------------------------------------+
+         |              |               |
+    +----+----+   +-----+-----+  +------+------+
+    | SQLite  |   | JSON Store|  | Webhook     |
+    | Warehouse|   | Dashboard |  | (Feishu/Ding)|
+    +---------+   +-----------+  +-------------+
 ```
-
-### 旧版(v2.2)与v3.0对比
-
-| 能力 | v2.2 看板 | v3.0 因果推断 |
-|------|-----------|--------------|
-| Schema变更检测 | ✅ 被动检测变更 | ✅ 主动预测影响 |
-| ETL影响分析 | ❌ 无 | ✅ P(Y\|do(X))量化 |
-| 因果关系 | ❌ 数据血缘(相关性) | ✅ CausalEdge(因果性) |
-| 反事实推理 | ❌ 无 | ✅ "如果删除X..." |
-| 多Agent协作 | ❌ 单系统 | ✅ 四Agent闭环 |
 
 ---
 
-## 📁 项目结构
+## Tech Stack
+
+| Layer | Technology | Purpose |
+|-------|-----------|---------|
+| Backend | Python 3.10+, FastAPI | API service and agent orchestration |
+| Causal Engine | Custom CausalSchemaEngine | Causal graph, Do-Calculus, counterfactual |
+| Data Processing | Polars, PyYAML | ETL cleaning, rule configuration |
+| Storage | SQLite, JSON | Persistence layer |
+| Frontend | Vue 3, ECharts 5.4 | Interactive dashboard |
+| Observability | loguru, Prometheus | Structured logging, metrics |
+| Alerts | Feishu, DingTalk | Notification dispatch |
+| Deployment | Gunicorn, Docker | Production deployment |
+
+---
+
+## Quick Start
+
+### Prerequisites
+
+- Python 3.10+
+- pip
+
+### Installation
+
+```bash
+git clone <repository-url>
+cd AutoDataFlow
+pip install -r requirements.txt
+```
+
+### Generate Sample Data & Run Analysis
+
+```bash
+cd backend
+python auto_data_flow.py
+```
+
+### Start API Service
+
+```bash
+# Development mode
+python app.py
+
+# Production mode
+gunicorn app:app -c gunicorn_conf.py
+```
+
+The service starts on `http://localhost:8080`. API docs at `/docs`.
+
+### Run Tests
+
+```bash
+python -m pytest tests/ -v --cov=backend --cov-report=term-missing
+```
+
+---
+
+## Docker Deployment
+
+### Build & Run
+
+```bash
+# Build image
+docker build -t autodataflow .
+
+# Run container
+docker run -d -p 8080:8080 --name autodataflow autodataflow
+```
+
+### Docker Compose (with Redis for rate limiting)
+
+```bash
+docker-compose up -d
+```
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `AUTODATAFLOW_API_KEY` | `dev-key-change-me` | API key for analysis trigger |
+| `GUNICORN_WORKERS` | `4` | Number of worker processes |
+| `GUNICORN_THREADS` | `2` | Threads per worker |
+| `GUNICORN_TIMEOUT` | `60` | Request timeout (seconds) |
+| `ADF_PORT` | `8080` | Service port |
+
+---
+
+## Project Structure
 
 ```
 AutoDataFlow/
-├── backend/
-│   ├── app.py                    # FastAPI主应用 + 四Agent集成
-│   ├── auto_data_flow.py         # v2.2数据刷新模块(兼容)
-│   ├── schema_change_detector.py # Schema变更检测器
-│   ├── causal_engine.py          # 🚀 v3.0核心: 因果推断引擎
-│   ├── data/                     # 数据文件(JSON)
-│   │   ├── health_report.json
-│   │   ├── quality_trend.json
-│   │   ├── predictive_analytics.json
-│   │   ├── schema_changes.json
-│   │   ├── lineage.json
-│   │   └── data_sources.json
-│   └── webhook_alert.py         # 飞书/钉钉告警
-├── frontend/
-│   └── index.html                # Vue3 + ECharts 可视化看板
-└── docs/
-    ├── SCI_FRAMEWORK.md          # SCI论文框架(38KB)
-    ├── 专利技术交底书.md           # 专利文档(48KB)
-    └── README.md                 # 本文件
++-- backend/
+|   +-- app.py                        # FastAPI application (v3.0)
+|   +-- causal_engine.py              # Causal inference engine
+|   +-- causal_mechanism_inferrer.py  # Statistical mechanism inference
+|   +-- schema_change_detector.py     # Schema snapshot & change detection
+|   +-- auto_data_flow.py             # Agent Swarm orchestrator
+|   +-- etl_agent.py                  # ETL clean agent (CSV/JSON input)
+|   +-- etl_cleaner.py                # Multi-target ETL cleaner (Polars)
+|   +-- rule_engine.py                # YAML-driven quality rule engine
+|   +-- rules_engine.py               # Independent rules engine
+|   +-- compliance_engine.py          # Industry compliance engine
+|   +-- compliance_library.py         # Compliance rule library (GDPR/PIPL/DSL)
+|   +-- webhook_alert.py              # Feishu/DingTalk alert system
+|   +-- report_export.py              # HTML/PDF report export
+|   +-- generate_report.py            # Markdown report generator
+|   +-- config_loader.py              # YAML configuration loader
+|   +-- gunicorn_conf.py              # Gunicorn production config
+|   +-- config/
+|   |   +-- quality_rules.yaml        # Quality rules configuration
+|   +-- data/                         # Runtime data (gitignored)
+|   +-- requirements.txt
++-- frontend/
+|   +-- index.html                    # Vue3 + ECharts dashboard
++-- tests/
+|   +-- __init__.py
+|   +-- test_smoke.py                 # Smoke tests
+|   +-- test_causal_engine.py         # Causal engine tests
+|   +-- test_etl_cleaner.py           # ETL cleaner tests
+|   +-- test_rule_engine.py           # Rule engine tests
+|   +-- test_compliance.py            # Compliance tests
+|   +-- test_schema_detector.py       # Schema detector tests
+|   +-- test_api_endpoints.py         # API endpoint tests
++-- docs/
+|   +-- API.md                        # API documentation
+|   +-- ARCHITECTURE.md               # Architecture guide
+|   +-- DEPLOYMENT.md                 # Deployment guide
+|   +-- INNOVATION.md                 # Innovation analysis
++-- input_data/
+|   +-- products.csv                  # Sample product data
+|   +-- sales.csv                     # Sample sales data
++-- docker-compose.yml
++-- Dockerfile
++-- requirements.txt
++-- .github/workflows/ci.yml
++-- TODO.md
++-- INNOVATION_ROADMAP.md
++-- OPTIMIZATION_REPORT.md
++-- README.md
 ```
 
 ---
 
-## 🚀 快速启动
+## Core Modules
 
-### 启动 v3.0 因果推断引擎
+### CausalSchemaEngine (`causal_engine.py`)
 
-```bash
-cd /mnt/d/ZYY Project/AutoDataFlow/backend
+Central module implementing causal graph construction and inference with five causal mechanisms:
 
-# 方式1: 独立使用因果引擎
-python -c "
-from causal_engine import CausalSchemaEngine
+| Mechanism | Description | Example |
+|-----------|-------------|---------|
+| `FOREIGN_KEY` | Deterministic constraint causality | `orders.customer_id` -> `customers.id` |
+| `ETL_TRANSFORM` | Aggregation/transformation | `raw_sales.amount` -> `daily_summary.total_revenue` |
+| `SCHEMA_DEPENDENCY` | Column reference dependency | `orders.status` -> `report.status` |
+| `QUALITY_PROPAGATION` | Quality metric propagation | `products.stock` -> `delivery_time` |
+| `CASCADING_FAILURE` | Failure propagation chain | `payments.status` -> `shipped_at` |
 
-engine = CausalSchemaEngine()
-engine.build_from_warehouse('data/warehouse.db')
+### ETL Multi-Target Cleaner (`etl_cleaner.py`)
 
-# 预测影响
-result = engine.predict_impact(
-    do_operation='drop_column',
-    target='orders.customer_email'
-)
-print(result)
+15+ cleaning strategies: `drop_nulls`, `fill_null_median`, `fill_null_mean`, `fill_null_zero`, `flag_nulls`, `outlier_clip`, `outlier_drop`, `outlier_flag`, `outlier_winsorize`, `deduplicate`, `deduplicate_all`, `cast_datetime`, `cast_numeric`, `trim_strings`, `aggregate_sum`, `aggregate_avg`, `aggregate_count`.
 
-# 反事实推理
-cf = engine.counterfactual(
-    change={'type': 'rename_column', 'target': 'sales.amount', 'new_name': 'revenue'},
-    outcome='ETL_Job_1'
-)
-print(cf)
-"
+### Compliance Engine (`compliance_engine.py`)
 
-# 方式2: 启动完整API服务
-python app.py  # 端口8080
-```
+Four compliance standards with field-level data masking:
 
-### API端点(v3.0)
-
-```
-GET  /health                    # 系统健康检查
-POST /causal/graph/build        # 构建因果血缘图谱
-POST /causal/impact/predict    # Do-Calculus变更影响预测
-POST /causal/counterfactual     # 反事实推理
-GET  /causal/metrics            # SchemaCausalityMetrics查询
-WS   /ws/stream                 # WebSocket实时流
-```
+- **GDPR** -- Email, phone, ID card, bank account, address, name masking
+- **PIPL/DSL** -- China personal information protection
+- **PCI-DSS** -- Payment card data security
+- **Data Type Validation** -- Strict type checking with format validation
 
 ---
 
-## 🧠 核心模块详解
+## API Reference
 
-### 1. causal_engine.py — 因果推断引擎
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Health check |
+| `/metrics` | GET | Prometheus metrics |
+| `/summary` | GET | Dashboard summary |
+| `/tables` | GET | List all tables |
+| `/causal/graph` | GET | Causal lineage graph |
+| `/causal/predict` | POST | Do-Calculus impact prediction |
+| `/causal/risk` | POST | Change risk assessment |
+| `/causal/counterfactual` | POST | Counterfactual reasoning |
+| `/rules/validate/all` | GET | Validate all quality rules |
+| `/etl/clean` | POST | Multi-target ETL cleaning |
+| `/api/etl/clean` | POST | CSV/JSON data cleaning |
+| `/compliance/check/{standard}` | GET | Compliance check |
+| `/api/compliance/apply` | POST | Apply compliance rules |
+| `/api/reports/export` | POST | Generate HTML/text report |
+| `/alerts/check` | POST | Run alert check |
+| `/run/analysis` | POST | Trigger full analysis (requires API key) |
 
-```python
-from causal_engine import (
-    CausalSchemaEngine,
-    CausalMechanism,
-    CausalEdge,
-    SchemaNode,
-    DoOperation,
-    CounterfactualReasoner
-)
-
-# 初始化引擎
-engine = CausalSchemaEngine()
-
-# 构建因果图谱
-engine.build_causal_graph(sources=['MySQL', 'PostgreSQL'])
-
-# ─────────────────────────────────────────────────
-# C1: 因果边示例 — 5种因果机制
-# ─────────────────────────────────────────────────
-
-# 机制1: FOREIGN_KEY — 外键因果
-edge1 = CausalEdge(
-    source_table='orders',
-    source_column='customer_id',
-    target_table='customers',
-    target_column='id',
-    mechanism=CausalMechanism.FOREIGN_KEY,
-    strength=1.0,
-    confidence=0.95
-)
-
-# 机制2: ETL_TRANSFORM — ETL变换因果
-edge2 = CausalEdge(
-    source_table='raw_sales',
-    source_column='amount',
-    target_table='daily_summary',
-    target_column='total_revenue',
-    mechanism=CausalMechanism.ETL_TRANSFORM,
-    strength=0.85,
-    confidence=0.90
-)
-
-# 机制3: SCHEMA_DEPENDENCY — Schema依赖因果
-edge3 = CausalEdge(
-    source_table='orders',
-    source_column='status',
-    target_table='etl_job_order_report',
-    target_column='status',
-    mechanism=CausalMechanism.SCHEMA_DEPENDENCY,
-    strength=0.70,
-    confidence=0.80
-)
-
-# 机制4: QUALITY_PROPAGATION — 质量传播因果
-edge4 = CausalEdge(
-    source_table='products',
-    source_column='stock',
-    target_table='order_fulfillment',
-    target_column='delivery_time',
-    mechanism=CausalMechanism.QUALITY_PROPAGATION,
-    strength=0.60,
-    confidence=0.75
-)
-
-# 机制5: CASCADING_FAILURE — 级联故障因果
-edge5 = CausalEdge(
-    source_table='payments',
-    source_column='status',
-    target_table='order_fulfillment',
-    target_column='shipped_at',
-    mechanism=CausalMechanism.CASCADING_FAILURE,
-    strength=0.50,
-    confidence=0.85
-)
-```
-
-### 2. Do-Calculus 变更影响预测
-
-```python
-# ─────────────────────────────────────────────────
-# C2: Do-Calculus 干预操作
-# ─────────────────────────────────────────────────
-
-# 操作1: 删除列
-do_drop = DoOperation(
-    op_type='drop_column',
-    target='orders.customer_email',
-    new_value=None
-)
-
-# 操作2: 重命名列
-do_rename = DoOperation(
-    op_type='rename_column',
-    target='sales.amount',
-    new_name='sales.revenue'
-)
-
-# 操作3: 数据类型变更
-do_dtype = DoOperation(
-    op_type='dtype_change',
-    target='orders.created_at',
-    new_dtype='TIMESTAMP'
-)
-
-# 预测影响 — 核心方法
-result = engine.predict_impact(do_operation=do_drop)
-
-# 返回结构
-{
-    'operation': 'drop_column(orders.customer_email)',
-    'downstream_tables': ['order_analytics', 'customer360', 'etl_daily_report'],
-    'affected_etl_jobs': [
-        {'job': 'ETL_Customer360', 'failure_prob': 0.95, 'impact_score': 0.85},
-        {'job': 'ETL_DailyReport', 'failure_prob': 0.60, 'impact_score': 0.50}
-    ],
-    'severity': 'HIGH',
-    'recommendations': [
-        '建议在删除前先添加nullable版本(v2)并双写',
-        'ETL_Customer360需要优先修改',
-        '预计影响2000万条历史数据'
-    ]
-}
-```
-
-### 3. CounterfactualReasoner — 反事实推理
-
-```python
-# ─────────────────────────────────────────────────
-# C3: 反事实推理 — "如果...会怎样?"
-# ─────────────────────────────────────────────────
-
-# factual: 实际观察到的结果
-factual = engine.query_factual(outcome='ETL_Job_1', time_range='7d')
-
-# counterfactual: 反事实假设
-counterfactual = engine.counterfactual(
-    change={
-        'type': 'drop_column',
-        'target': 'orders.customer_email'
-    },
-    outcome='ETL_Job_1',
-    time_range='7d'
-)
-
-# difference: factual vs counterfactual 的差异
-difference = engine.compute_difference(factual, counterfactual)
-
-# 返回结构
-{
-    'factual': {
-        'outcome': 'ETL_Job_1',
-        'actual_quality_score': 94.5,
-        'anomaly_count': 2
-    },
-    'counterfactual': {
-        '假设操作': 'drop_column(orders.customer_email)',
-        'predicted_quality_score': 71.2,
-        'anomaly_count': 15,
-        'affected_columns': ['customer_email', 'customer_name_from_email']
-    },
-    'difference': {
-        'quality_degradation': -23.3,
-        'anomaly_increase': 13,
-        'critical_operations': ['customer360_report', 'email_notification_job']
-    }
-}
-```
-
-### 4. SchemaCausalityMetrics — 因果指标
-
-```python
-# ─────────────────────────────────────────────────
-# C4: Schema因果指标 — 量化血缘质量
-# ─────────────────────────────────────────────────
-
-metrics = engine.compute_schema_metrics()
-
-# 指标1: 血缘密度 (Lineage Density)
-# 公式: LD = |E_causal| / |V|²
-# 意义: 每个节点平均连接数，衡量血缘网络稠密程度
-{
-    'lineage_density': 0.073,  # 7.3%连通率
-    'total_nodes': 156,
-    'total_edges': 1789,
-    'avg_degree': 22.9
-}
-
-# 指标2: 传播效率 (Propagation Efficiency)
-# 公式: PE = Σ(1/delay_steps) / |affected_nodes|
-# 意义: 因果效应从源头到终端的速度
-{
-    'propagation_efficiency': 0.68,
-    'avg_delay_steps': 2.3,
-    'fast_propagation_paths': 342,
-    'bottleneck_nodes': ['etl_core_aggregation']
-}
-
-# 指标3: 脆弱性评分 (Fragility Score)
-# 公式: FS = Σ(ImpactProb_i × JobCriticality_i)
-# 意义: 识别最容易被变更影响的关键ETL任务
-{
-    'fragility_score': 0.52,
-    'critical_jobs': [
-        {'job': 'ETL_Customer360', 'fragility': 0.89},
-        {'job': 'ETL_FinanceReport', 'fragility': 0.82},
-        {'job': 'ETL_InventorySync', 'fragility': 0.75}
-    ],
-    'bottleneck_columns': ['orders.customer_email', 'payments.amount']
-}
-```
+Full interactive documentation at `/docs` (Swagger UI) and `/redoc`.
 
 ---
 
-## 📊 健康度计算公式
+## Configuration
 
-### 综合健康度 (Causally Weighted)
-
-$$
-HealthScore = 100 \times \frac{1 - \sum_{i}{\alpha_i \cdot IssueRate_i}}{\sum_{i}{\alpha_i}}
-$$
-
-其中:
-- $IssueRate_i = null\_pct_i + outlier\_pct_i$
-- $\alpha_i = PageRank(causal\_graph, column_i) \times field\_importance_i$
-- $PageRank$: 在因果图中的重要性（影响越多下游表，权重越高）
-
-**关键区别**: 普通健康度对所有字段平等加权；因果健康度对"影响下游ETL的关键字段"给予更高权重。
-
-### Schema变更影响严重度
-
-$$
-Severity(change) = \sum_{job \in downstream} ImpactLocalization(job, change) \times JobCriticality(job)
-$$
-
-其中:
-- $ImpactLocalization = 1$ 如果变更目标 ∈ job的读取列，否则 $0$
-- $JobCriticality = upstream\_quality\_score \times downstream\_dependency\_count$
-
----
-
-## 🧪 四Agent协作流程
-
-### Agent间消息格式
-
-```python
-@dataclass
-class AgentMessage:
-    sender: str              # "SchemaAgent"
-    receiver: str            # "ETLAgent"
-    msg_type: str            # "schema_change_detected" | "etl_completed" | "anomaly_found"
-    payload: dict            # 消息内容
-    timestamp: str           # ISO格式
-    causal_context: dict     # 因果推理上下文
-```
-
-### 协作时序
-
-```
-Schema Agent                              ETL Agent
-     │                                        │
-     │ 1. 检测到Schema变更                    │
-     │   {change: drop_column(orders.email)}  │
-     │ ────────────────────────────────────▶  │
-     │                                        │
-     │                        2. 因果分析      │
-     │                        预测影响范围     │
-     │                                        │
-     │ ◀───────────────────────────────────  │
-     │   {affected_jobs: [ETL_C360, ETL_REP]} │
-     │                                        │
-     │                                        ▼
-     │                                   ETL Agent
-     │                                        │
-     │ 3. 执行ETL并检测异常                   │
-     │   {anomaly: quality_dropped}           │
-     │ ────────────────────────────────────▶  │
-     │                                        ▼
-     │                               Observer Agent
-     │                                        │
-     │ 4. 根因分析                            │
-     │   {root_cause: quality_propagation}    │
-     │ ────────────────────────────────────▶  │
-     │                                        ▼
-     │                                   Viz Agent
-     │                                        │
-     │ 5. 生成报告+告警                       │
-     │   {report_url, alert_channels}         │
-```
-
----
-
-## 🔧 配置说明
-
-### 因果引擎配置
+### Quality Rules (`backend/config/quality_rules.yaml`)
 
 ```yaml
-# backend/config/causal_config.yaml
-causal_engine:
-  # 因果推断参数
-  confidence_threshold: 0.75   # 最小置信度
-  propagation_depth: 10       # 最大传播深度
-  
-  # Do-Calculus参数
-  do_calculus:
-    max_downstream_depth: 5   # 最大下游深度
-    failure_prob_threshold: 0.5
-  
-  # 反事实推理参数
-  counterfactual:
-    num_samples: 1000
-    time_horizon: '7d'
-  
-  # 因果图谱存储
-  storage:
-    backend: 'sqlite'
-    path: 'data/warehouse.db'
+scoring_weights:
+  null_rate: 0.4
+  outlier_rate: 0.35
+  uniqueness: 0.25
 
-  # Agent配置
-  agents:
-    schema:
-      scan_interval: 300  # 5分钟扫描一次
-    etl:
-      retry_count: 3
-      timeout: 60
+data_quality_rules:
+  defaults:
+    - id: "null_check_email"
+      type: "null_check"
+      field: "email"
+      severity: "critical"
+      enabled: true
+  table_rules:
+    "*":
+      - id: "trim_all_strings"
+        type: "regex_match"
+        field: ".*"
+        pattern: "^\\S.*\\S$"
+        severity: "warning"
+```
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `AUTODATAFLOW_API_KEY` | `dev-key-change-me` | API key for protected endpoints |
+| `AUTODATAFLOW_PORT` | `8080` | Service port |
+| `GUNICORN_WORKERS` | `4` | Worker processes |
+| `GUNICORN_THREADS` | `2` | Threads per worker |
+
+---
+
+## Testing
+
+```bash
+# Run all tests
+python -m pytest tests/ -v
+
+# Run with coverage
+python -m pytest tests/ -v --cov=backend --cov-report=term-missing
+
+# Run specific test file
+python -m pytest tests/test_causal_engine.py -v
+
+# Run smoke tests only
+python -m pytest tests/test_smoke.py -v
 ```
 
 ---
 
-## 📈 与现有工具对比
+## Innovation & Patents
 
-| 能力 | Great Expectations | Apache Griffin | AutoDataFlow v3.0 |
-|------|-------------------|-----------------|-------------------|
-| Schema变更检测 | ❌ | ❌ | ✅ |
-| 因果血缘图谱 | ❌ | ❌ | ✅ |
-| Do-Calculus预测 | ❌ | ❌ | ✅ |
-| 反事实推理 | ❌ | ❌ | ✅ |
-| 多Agent协作 | ❌ | ❌ | ✅ |
-| 变更影响量化 | ⚠️ 规则匹配 | ⚠️ 统计检测 | ✅ 因果推理 |
-| 预测 vs 检测 | 检测 | 检测 | **预测** |
+See [INNOVATION_ROADMAP.md](INNOVATION_ROADMAP.md) for the full innovation roadmap including:
+
+1. **Patent 1**: Causal Lineage Graph Construction via Statistical Mechanism Inference
+2. **Patent 2**: Do-Calculus-Based Schema Change Impact Prediction Engine
+3. **Patent 3**: Counterfactual Data Quality Reasoning Framework
+4. **Patent 4**: Intelligent Data Mapping with Auto-Schema Discovery
 
 ---
 
-## 🎯 适用场景
+## Roadmap
 
-1. **数据库Schema升级前**: 预测字段变更对下游ETL的影响范围
-2. **微服务重构**: 评估数据库拆分对上游应用的影响
-3. **数据湖治理**: 识别关键血缘节点，制定保护策略
-4. **ETL作业调度**: 变更Schema后自动重排依赖任务
+- [x] Causal lineage graph construction
+- [x] Do-Calculus impact prediction
+- [x] Counterfactual quality reasoning
+- [x] Configurable rule engine
+- [x] Multi-target ETL cleaning
+- [x] Industry compliance library
+- [x] HTML/PDF report export
+- [x] Webhook alerts (Feishu/DingTalk)
+- [x] Docker deployment
+- [x] CI/CD pipeline
+- [ ] Apache Spark / dbt integration
+- [ ] Graph neural network causal strength estimation
+- [ ] Streaming schema change events (Kafka, Flink CDC)
+- [ ] Interactive what-if scenario exploration UI
+- [ ] CI/CD pre-deployment schema impact checks
 
 ---
 
-## 📝 技术栈
+## License
 
-- **后端**: Python 3.10+ / FastAPI / asyncio
-- **因果引擎**: 自研CausalSchemaEngine (1121行)
-- **数据存储**: SQLite (图谱) + JSON (看板数据)
-- **前端**: Vue3 + ECharts 5.4
-- **告警**: 飞书 Webhook + 钉钉 Webhook
-- **协议**: REST API + WebSocket
-
----
-
-## 🔗 相关文档
-
-- 📄 [SCI_FRAMEWORK.md](SCI_FRAMEWORK.md) — SCI论文框架(38KB)
-- 📄 [专利技术交底书.md](专利技术交底书.md) — 专利文档(48KB)
-- 💻 [backend/app.py](backend/app.py) — FastAPI主应用
-- 💻 [backend/causal_engine.py](backend/causal_engine.py) — 因果推断引擎(43KB)
+MIT License. See [LICENSE](LICENSE) for details.

@@ -1,10 +1,55 @@
+# Python
 __pycache__/
 *.pyc
+*.pyo
 *.egg-info/
 dist/
 build/
+*.egg
+.eggs/
+
+# Virtual environments
 .venv/
 venv/
-.env
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Testing
 .pytest_cache/
-docs/
+htmlcov/
+coverage.xml
+.coverage
+
+# Environment
+.env
+.env.local
+
+# Data (runtime generated)
+backend/data/warehouse.db
+backend/data/logs/
+backend/data/reports/
+backend/data/health_report.json
+backend/data/quality_trend.json
+backend/data/predictive_analytics.json
+backend/data/schema_snapshot.json
+backend/data/schema_changes.json
+backend/data/lineage.json
+backend/data/data_sources.json
+backend/data/webhook_config.json
+
+# Reports
+docs/*.pdf
+*.md.bak
+
+# Docker
+.docker/
+
+# OS
+.DS_Store
+Thumbs.db
