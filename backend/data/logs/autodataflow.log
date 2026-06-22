@@ -1,5 +1,0 @@
-2026-06-01 16:24:37.934 | INFO     | app:_configure_logging:209 | loguru configured
-2026-06-01 16:24:38.050 | INFO     | app:trigger_analysis:786 | Analysis triggered
-2026-06-01 16:24:38.051 | WARNING  | app:trigger_analysis:789 | Unauthorized analysis attempt
-2026-06-01 16:24:40.166 | INFO     | app:trigger_analysis:786 | Analysis triggered
-2026-06-01 16:24:40.167 | WARNING  | app:trigger_analysis:789 | Unauthorized analysis attempt

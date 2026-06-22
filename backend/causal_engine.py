@@ -933,7 +933,7 @@ class CausalSchemaEngine:
         self.db_path = db_path
         self.graph_builder: Optional[CausalGraphBuilder] = None
         self.do_calculus: Optional[DoCalculusEngine] = None
-        self.counterfactual: Optional[CounterfactualReasoner] = None
+        self._counterfactual: Optional[CounterfactualReasoner] = None
         self._built = False
 
     def build_causal_graph(self, lineage_log: Optional[List[Dict]] = None):
@@ -942,7 +942,7 @@ class CausalSchemaEngine:
         self.graph_builder.build_from_db(lineage_log)
 
         self.do_calculus = DoCalculusEngine(self.graph_builder)
-        self.counterfactual = CounterfactualReasoner(self.graph_builder, self.do_calculus)
+        self._counterfactual = CounterfactualReasoner(self.graph_builder, self.do_calculus)
 
         self._built = True
 
@@ -975,7 +975,7 @@ class CausalSchemaEngine:
         """反事实推理"""
         if not self._built:
             self.build_causal_graph()
-        return self.counterfactual.reason(change, outcome)
+        return self._counterfactual.reason(change, outcome)
 
     def get_causal_graph(self) -> Dict:
         """获取因果图谱（用于可视化）"""

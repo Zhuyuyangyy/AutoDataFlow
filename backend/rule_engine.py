@@ -311,10 +311,11 @@ class RuleExecutor:
         if len(non_null) == 0:
             return True, None
         dup_mask = non_null[field].is_duplicated()
-        failed = dup_mask.sum()
-        if failed == 0:
+        if not dup_mask.any():
             return True, None
-        dup_values = non_null.filter(dup_mask)[field].head(5).to_list()
+        # failed_count = number of distinct values that are duplicated (not total duplicated rows)
+        failed = non_null.filter(dup_mask)[field].n_unique()
+        dup_values = non_null.filter(dup_mask)[field].unique().head(5).to_list()
         return False, RuleViolation(
             rule_id=rule.get("id"),
             rule_type="uniqueness",

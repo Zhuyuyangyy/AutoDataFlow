@@ -25,6 +25,9 @@ env/
 htmlcov/
 coverage.xml
 .coverage
+# pytest tmpdir artifacts (paths may be percent-encoded when non-ASCII is present)
+C%3A*
+*.db.tmp
 
 # Environment
 .env

@@ -86,8 +86,8 @@ class SchemaSnapshot:
     变更记录：data/schema_changes.json
     """
 
-    SNAPSHOT_FILE = "data/schema_snapshot.json"
-    CHANGES_FILE = "data/schema_changes.json"
+    SNAPSHOT_FILE = "schema_snapshot.json"
+    CHANGES_FILE = "schema_changes.json"
 
     def __init__(self, db_path: str):
         self.db_path = Path(db_path)
@@ -122,7 +122,16 @@ class SchemaSnapshot:
             return []
         try:
             data = json.loads(self.changes_file.read_text(encoding="utf-8"))
-            return [SchemaChange(**c) for c in data.get("changes", [])]
+            out: List[SchemaChange] = []
+            for c in data.get("changes", []):
+                try:
+                    out.append(SchemaChange(**c))
+                except TypeError:
+                    # Backward-compat: legacy records may omit newer fields like 'severity'
+                    payload = dict(c)
+                    payload.setdefault("severity", "info")
+                    out.append(SchemaChange(**payload))
+            return out
         except (json.JSONDecodeError, KeyError):
             return []
 

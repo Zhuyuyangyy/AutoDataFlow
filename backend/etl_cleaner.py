@@ -246,7 +246,9 @@ class CleaningStrategy:
                 for col in result.columns:
                     s = result[col]
                     if s.dtype == pl.Utf8:
-                        trimmed = s.str.strip()
+                        # polars >= 0.20 uses strip_chars; fall back for older versions
+                        strip_fn = getattr(s.str, "strip_chars", None) or getattr(s.str, "strip")
+                        trimmed = strip_fn()
                         changed = (trimmed != s).sum()
                         if changed > 0:
                             result = result.with_columns(trimmed.alias(col))
@@ -327,11 +329,11 @@ class ETLCleaner:
 
     def _save_target(self, df: pl.DataFrame, table: str, if_exists: str = "replace"):
         """保存清洗后的 DataFrame 到 SQLite"""
-        conn = sqlite3.connect(self.db_path)
-        try:
-            df.write_database(table, connection=conn, if_exists=if_exists)
-        finally:
-            conn.close()
+        # Use URI string form so polars can pick a compatible DBAPI driver.
+        # If the path contains non-ASCII (e.g. Chinese), percent-encode it.
+        from urllib.parse import quote
+        uri = "sqlite:///" + quote(self.db_path)
+        df.write_database(table, connection=uri, if_table_exists=if_exists)
 
     def clean(
         self,
